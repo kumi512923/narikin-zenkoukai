@@ -335,6 +335,24 @@ const GOOGLE_FORM = {
 };
 
 const $ = id => document.getElementById(id);
+
+/* 見えない枠の中で、ふつうのフォーム送信としてGoogleフォームへ送る */
+function sendToGoogle(action, params){
+  return new Promise(resolve => {
+    const name = 'gf_' + Date.now();
+    const ifr = document.createElement('iframe');
+    ifr.name = name; ifr.style.display = 'none'; ifr.setAttribute('aria-hidden','true');
+    document.body.appendChild(ifr);
+    const fm = document.createElement('form');
+    fm.method = 'POST'; fm.action = action; fm.target = name; fm.acceptCharset = 'UTF-8'; fm.style.display = 'none';
+    for(const [k,v] of params){ const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; fm.appendChild(i); }
+    document.body.appendChild(fm);
+    let done = false; const fin = () => { if(!done){ done = true; resolve(); } };
+    ifr.addEventListener('load', fin);
+    setTimeout(fin, 4000);
+    fm.submit();
+  });
+}
 const f = $('f');
 function mark(key, bad, msg){
   const el = f.querySelector(`[data-req="${key}"]`);
@@ -377,7 +395,7 @@ f.addEventListener('submit', async e => {
   const btn = $('btn'); btn.disabled = true; $('status').textContent = '送信しています…';
   try{
     if(!GOOGLE_FORM.ready) throw new Error('not-configured');
-    await fetch(GOOGLE_FORM.action, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:d.toString()});
+    await sendToGoogle(GOOGLE_FORM.action, d);
     document.querySelector('.formsec').classList.add('done');
     document.querySelector('.formsec').scrollIntoView({behavior:'smooth'});
   }catch(err){
